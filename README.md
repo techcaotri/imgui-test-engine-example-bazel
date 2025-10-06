@@ -44,7 +44,7 @@ cd imgui_test_project
 
 # Create the required files
 touch MODULE.bazel
-touch repositories.bzl
+touch extensions.bzl
 touch BUILD.bazel
 touch .bazelrc
 touch .bazelversion
@@ -86,7 +86,7 @@ bazel build //:imgui_test_app
 imgui_test_project/
 ├── MODULE.bazel           # Bazel module configuration (bzlmod)
 ├── MODULE.bazel.lock      # Auto-generated, add to .gitignore
-├── repositories.bzl       # External repository definitions
+├── extensions.bzl       # External repository definitions
 ├── BUILD.bazel           # Main build targets
 ├── .bazelrc              # Bazel configuration
 ├── .bazelversion         # Pin Bazel version
@@ -113,7 +113,7 @@ bazel_dep(name = "bazel_skylib", version = "1.5.0")
 bazel_dep(name = "rules_cc", version = "0.0.9")
 ```
 
-### repositories.bzl
+### extensions.bzl
 Defines how to fetch ImGui and ImGui Test Engine from GitHub:
 ```python
 def imgui_test_repositories():
@@ -222,7 +222,7 @@ bazel fetch //...
 
 To update ImGui or Test Engine versions:
 
-1. Edit `repositories.bzl`
+1. Edit `extensions.bzl`
 2. Change the `tag` or `commit`:
 ```python
 new_git_repository(
@@ -416,7 +416,7 @@ bazel aquery //:imgui_test_app
 If migrating from old WORKSPACE setup:
 
 1. Create `MODULE.bazel` with module declaration
-2. Move repository rules to `repositories.bzl`
+2. Move repository rules to `extensions.bzl`
 3. Add `--enable_bzlmod` to `.bazelrc`
 4. Update BUILD files to use new target names
 5. Clean and rebuild
