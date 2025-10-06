@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
@@ -10,147 +9,176 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 echo -e "${BLUE}======================================${NC}"
-echo -e "${BLUE}ImGui Test Engine - GUI Mode Testing${NC}"
+echo -e "${BLUE}ImGui Test - GUI with Test Reports${NC}"
 echo -e "${BLUE}======================================${NC}"
 
-# Check if we have a display
+# Check display
 if [ -z "$DISPLAY" ]; then
-    echo -e "${RED}ERROR: No DISPLAY variable set${NC}"
-    echo -e "${YELLOW}This script requires a GUI environment${NC}"
-    echo -e "${YELLOW}For headless testing, use: ./run_tests_coverage.sh${NC}"
-    exit 1
+	echo -e "${RED}ERROR: No DISPLAY variable set${NC}"
+	exit 1
 fi
 
-echo -e ""
-echo -e "${YELLOW}⚠️  Important Note About GUI Coverage:${NC}"
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}GUI mode coverage is NOT reliable with Bazel because:${NC}"
-echo -e "  • Bazel's coverage requires running tests through bazel coverage"
-echo -e "  • Direct binary execution bypasses coverage collection"
-echo -e "  • .gcda files may not be generated or accessible"
-echo -e ""
-echo -e "${CYAN}This script will:${NC}"
-echo -e "  ✓ Run tests in GUI mode for VISUAL INSPECTION"
-echo -e "  ✗ NOT produce accurate coverage data"
-echo -e ""
-echo -e "${YELLOW}For accurate coverage, use:${NC}"
-echo -e "  ${GREEN}./run_tests_coverage.sh${NC}          (headless, accurate coverage)"
-echo -e "  ${GREEN}./run_tests_gui_then_coverage.sh${NC} (GUI + accurate coverage)"
-echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e ""
-echo -e "${CYAN}Continue with GUI testing only? (no coverage) [y/N]${NC}"
-read -r response
-
-if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    echo -e "${YELLOW}Cancelled. Use ./run_tests_gui_then_coverage.sh for GUI + coverage${NC}"
-    exit 0
+# Check and install junit2html
+if ! command -v junit2html &>/dev/null; then
+	echo -e "${YELLOW}Installing junit2html...${NC}"
+	if command -v pip3 &>/dev/null; then
+		pip3 install --user junit2html
+	elif command -v pip &>/dev/null; then
+		pip install --user junit2html
+	else
+		echo -e "${RED}ERROR: pip not found. Install with:${NC}"
+		echo -e "  sudo apt-get install python3-pip"
+		exit 1
+	fi
+	export PATH="$PATH:$HOME/.local/bin"
 fi
 
-echo -e ""
-echo -e "${GREEN}Building GUI test application...${NC}"
+echo -e "${GREEN}✓ junit2html is available${NC}"
+
+# Build application
+echo -e "${CYAN}Building GUI application...${NC}"
 bazel build //:imgui_test_app
 
+# Prepare test results directory
+TEST_RESULTS_DIR="test_results"
+JUNIT_DIR="$TEST_RESULTS_DIR/junit"
+rm -rf "$TEST_RESULTS_DIR"
+mkdir -p "$TEST_RESULTS_DIR"
+mkdir -p "$JUNIT_DIR"
+
+# Run GUI
 echo -e ""
 echo -e "${BLUE}======================================${NC}"
-echo -e "${CYAN}Starting GUI Test Session${NC}"
+echo -e "${BLUE}GUI Test Session${NC}"
 echo -e "${BLUE}======================================${NC}"
 echo -e ""
 echo -e "${YELLOW}Instructions:${NC}"
-echo -e "  1. The ImGui Test Engine UI will open"
-echo -e "  2. Tests run automatically (or use Test Engine window)"
-echo -e "  3. Watch for visual issues or failures"
-echo -e "  4. Manually interact with the UI if needed"
-echo -e "  5. Close the window when done"
+echo -e "  • Tests will run automatically"
+echo -e "  • Watch for visual issues"
+echo -e "  • Wait for all tests to complete"
+echo -e "  • Close window when done"
+echo -e "  • JUnit XML will be exported to test_results/"
 echo -e ""
-echo -e "${CYAN}Test Engine UI:${NC}"
-echo -e "  • Open 'Test Engine' from the menu"
-echo -e "  • View all tests in the Tests tab"
-echo -e "  • Run individual tests or all tests"
-echo -e "  • Check results in real-time"
-echo -e ""
-echo -e "${YELLOW}Press Enter to launch GUI...${NC}"
+echo -e "${CYAN}Press Enter to launch GUI...${NC}"
 read
 
-# Run the GUI application
-echo -e "${GREEN}Launching GUI application...${NC}"
+echo -e "${GREEN}Launching GUI...${NC}"
 set +e
 ./bazel-bin/imgui_test_app --test
 GUI_EXIT_CODE=$?
 set -e
 
-echo -e ""
 if [ $GUI_EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}✓ GUI session completed successfully${NC}"
+	echo -e "${GREEN}✓ GUI session completed${NC}"
 else
-    echo -e "${YELLOW}⚠ GUI session ended with code: $GUI_EXIT_CODE${NC}"
+	echo -e "${YELLOW}⚠ GUI exited with code: $GUI_EXIT_CODE${NC}"
 fi
 
-# Create session report
-TEST_RESULTS_DIR="test_results_gui"
-rm -rf "$TEST_RESULTS_DIR"
-mkdir -p "$TEST_RESULTS_DIR"
+# Check if JUnit XML was generated
+if [ ! -f "$TEST_RESULTS_DIR/test_results.xml" ]; then
+	echo -e "${RED}ERROR: test_results/test_results.xml not found${NC}"
+	echo -e "${YELLOW}Make sure app_logic.cpp has JUnit export enabled:${NC}"
+	echo -e "  test_io.ExportResultsFilename = \"test_results/test_results.xml\";"
+	echo -e "  test_io.ExportResultsFormat = ImGuiTestEngineExportFormat_JUnitXml;"
+	exit 1
+fi
 
-cat > "$TEST_RESULTS_DIR/session_report.txt" << EOF
-GUI Test Session Report
-=======================
-Date: $(date)
-Exit Code: $GUI_EXIT_CODE
+# Generate HTML report
+echo -e ""
+echo -e "${BLUE}======================================${NC}"
+echo -e "${BLUE}Generating HTML Test Report${NC}"
+echo -e "${BLUE}======================================${NC}"
 
-Test Mode: Interactive GUI (Visual Inspection Only)
-Application: imgui_test_app
+# Convert to HTML
+echo -e "${GREEN}Converting XML to HTML...${NC}"
+junit2html "$TEST_RESULTS_DIR/test_results.xml" "$JUNIT_DIR/test_report.html"
 
-Purpose:
---------
-- Visual verification of test execution
-- Manual testing and interaction
-- UI bug detection
-- Real-time test observation
+# Extract test statistics
+TOTAL_TESTS=$(grep -o 'tests="[0-9]*"' "$TEST_RESULTS_DIR/test_results.xml" | head -1 | cut -d'"' -f2)
+FAILURES=$(grep -o 'failures="[0-9]*"' "$TEST_RESULTS_DIR/test_results.xml" | head -1 | cut -d'"' -f2)
+PASSED=$((TOTAL_TESTS - FAILURES))
 
-Coverage:
----------
-⚠️  NO COVERAGE DATA COLLECTED
-GUI mode does not produce coverage metrics.
-
-For coverage analysis, use:
-  ./run_tests_coverage.sh           - Headless mode with coverage
-  ./run_tests_gui_then_coverage.sh  - GUI inspection + coverage
-
-Test Observations:
-------------------
-(Add your manual observations here)
-
-Known Limitations:
-------------------
-- No automated test reports (manual observation only)
-- No coverage metrics
-- No XML test results
-- Exit code may not reflect test failures
-
-Next Steps:
------------
-For complete test validation:
-1. Run: ./run_tests_coverage.sh
-2. Review: coverage_report/html/index.html
-3. Check: test_results/summary.txt
+# Create index with summary
+cat >"$JUNIT_DIR/index.html" <<EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }
+        .summary { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .summary h2 { margin-top: 0; color: #333; }
+        .stat { display: inline-block; margin: 10px 20px 10px 0; font-size: 18px; }
+        .stat-label { color: #666; }
+        .stat-value { font-weight: bold; font-size: 24px; }
+        .passed { color: #4CAF50; }
+        .failed { color: #f44336; }
+        .report-link { background: #1976D2; color: white; padding: 15px 30px; text-decoration: none; border-radius: 4px; display: inline-block; margin-top: 20px; }
+        .report-link:hover { background: #1565C0; }
+    </style>
+</head>
+<body>
+    <h1>ImGui Test Results</h1>
+    <div class="summary">
+        <h2>Test Summary</h2>
+        <div class="stat">
+            <div class="stat-label">Total Tests</div>
+            <div class="stat-value">${TOTAL_TESTS}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Passed</div>
+            <div class="stat-value passed">${PASSED}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Failed</div>
+            <div class="stat-value failed">${FAILURES}</div>
+        </div>
+        <br>
+        <a href="test_report.html" class="report-link">View Detailed Report</a>
+    </div>
+</body>
+</html>
 EOF
 
+# Create summary file
+cat >"$TEST_RESULTS_DIR/summary.txt" <<EOF
+ImGui Test Report
+=================
+Date: $(date)
+
+Results:
+  Total Tests: ${TOTAL_TESTS}
+  Passed: ${PASSED}
+  Failed: ${FAILURES}
+
+Files:
+  XML:  $TEST_RESULTS_DIR/test_results.xml
+  HTML: $JUNIT_DIR/index.html
+EOF
+
+# Final output
 echo -e ""
 echo -e "${BLUE}======================================${NC}"
-echo -e "${GREEN}GUI Test Session Complete${NC}"
+echo -e "${GREEN}Complete!${NC}"
 echo -e "${BLUE}======================================${NC}"
 echo -e ""
-echo -e "${CYAN}Session Report:${NC}"
-echo -e "  Location: $(pwd)/$TEST_RESULTS_DIR/session_report.txt"
-echo -e "  Exit Code: $GUI_EXIT_CODE"
+echo -e "${CYAN}Test Results:${NC}"
+echo -e "  Total Tests: ${TOTAL_TESTS}"
+if [ "$FAILURES" = "0" ]; then
+	echo -e "  Status: ${GREEN}All tests passed ✓${NC}"
+else
+	echo -e "  Status: ${RED}${FAILURES} test(s) failed ✗${NC}"
+fi
 echo -e ""
-echo -e "${YELLOW}⚠️  No coverage data was collected (by design)${NC}"
+echo -e "${CYAN}Reports:${NC}"
+echo -e "  XML:  $TEST_RESULTS_DIR/test_results.xml"
+echo -e "  HTML: $JUNIT_DIR/index.html"
 echo -e ""
-echo -e "${CYAN}To get coverage metrics, run:${NC}"
-echo -e "  ${GREEN}./run_tests_coverage.sh${NC}"
-echo -e "${CYAN}Or for GUI + coverage:${NC}"
-echo -e "  ${GREEN}./run_tests_gui_then_coverage.sh${NC}"
-echo -e ""
-echo -e "${CYAN}View session report:${NC}"
-echo -e "  cat $TEST_RESULTS_DIR/session_report.txt"
+echo -e "${CYAN}Open report:${NC}"
+echo -e "  xdg-open $JUNIT_DIR/index.html"
+
+# Display summary
+cat "$TEST_RESULTS_DIR/summary.txt"
 
 exit $GUI_EXIT_CODE

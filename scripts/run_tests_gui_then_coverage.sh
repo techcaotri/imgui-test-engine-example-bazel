@@ -128,6 +128,7 @@ echo -e "${GREEN}Generating coverage report...${NC}"
 
 OUTPUT_BASE=$(bazel info output_base 2>/dev/null)
 WORKSPACE=$(pwd)
+EXEC_ROOT=$(bazel info execution_root 2>/dev/null)
 COVERAGE_FILE="$OUTPUT_BASE/execroot/_main/bazel-out/_coverage/_coverage_report.dat"
 
 OUTPUT_DIR="coverage_report"
@@ -137,26 +138,52 @@ mkdir -p "$OUTPUT_DIR/html"
 if [ -f "$COVERAGE_FILE" ] && [ -s "$COVERAGE_FILE" ]; then
 	echo -e "${GREEN}Found coverage data${NC}"
 
-	# Filter to only workspace files (exclude external dependencies)
-	echo -e "${GREEN}Filtering coverage data...${NC}"
+	# Option 1: Show ALL coverage (workspace + external dependencies)
+	echo -e "${CYAN}Generating full coverage report (all modules)...${NC}"
+
+	# Run genhtml from exec root where external/ exists
+	cd "$EXEC_ROOT"
+
+	# Copy workspace files to exec root temporarily
+	cp "$WORKSPACE/app_logic.cpp" . 2>/dev/null || true
+	cp "$WORKSPACE/app_logic.h" . 2>/dev/null || true
+	cp "$WORKSPACE/main.cpp" . 2>/dev/null || true
+
+	genhtml "$COVERAGE_FILE" \
+		--output-directory "$WORKSPACE/$OUTPUT_DIR/html" \
+		--title "ImGui Test Coverage (All Modules)" \
+		--legend \
+		--show-details \
+		--ignore-errors source \
+		2>&1 | tee "$WORKSPACE/$OUTPUT_DIR/genhtml.log"
+
+	# Clean up
+	rm -f app_logic.cpp app_logic.h main.cpp
+	cd "$WORKSPACE"
+
+	# Also generate workspace-only report
+	echo -e "${CYAN}Generating workspace-only report...${NC}"
 	lcov --extract "$COVERAGE_FILE" \
 		"app_logic.cpp" \
 		"app_logic.h" \
 		"main.cpp" \
-		--output-file "$OUTPUT_DIR/coverage_filtered.info" \
-		2>&1 | grep -v "WARNING"
+		--output-file "$OUTPUT_DIR/coverage_workspace.info"
 
-	# Generate HTML from workspace directory (where the files are)
-	echo -e "${GREEN}Generating HTML report...${NC}"
-	genhtml "$OUTPUT_DIR/coverage_filtered.info" \
-		--output-directory "$OUTPUT_DIR/html" \
-		--title "ImGui Test Coverage" \
+	mkdir -p "$OUTPUT_DIR/html_workspace"
+	genhtml "$OUTPUT_DIR/coverage_workspace.info" \
+		--output-directory "$OUTPUT_DIR/html_workspace" \
+		--title "Workspace Coverage Only" \
 		--legend \
 		--show-details \
-		2>&1 | tee "$OUTPUT_DIR/genhtml.log"
+		2>&1 >/dev/null
 
 	# Generate summary
-	lcov --summary "$OUTPUT_DIR/coverage_filtered.info" 2>/dev/null | tee "$OUTPUT_DIR/summary.txt"
+	echo -e "${GREEN}Coverage Summary:${NC}"
+	echo -e "${CYAN}=== All Modules ===${NC}"
+	lcov --summary "$COVERAGE_FILE" 2>/dev/null | tee "$OUTPUT_DIR/summary_all.txt"
+	echo -e ""
+	echo -e "${CYAN}=== Workspace Only ===${NC}"
+	lcov --summary "$OUTPUT_DIR/coverage_workspace.info" 2>/dev/null | tee "$OUTPUT_DIR/summary_workspace.txt"
 else
 	echo -e "${YELLOW}No coverage data found${NC}"
 	exit 1
