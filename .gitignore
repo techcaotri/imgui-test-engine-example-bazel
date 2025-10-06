@@ -3,6 +3,7 @@ bazel-bin
 bazel-out
 bazel-genipc
 bazel-testlogs
+bazel-imgui-test-engine-example-claude
 
 # Bazel module lock file
 MODULE.bazel.lock
@@ -10,3 +11,6 @@ MODULE.bazel.lock
 coverage_report
 test_results
 test_results_gui
+
+*.txt
+*.log

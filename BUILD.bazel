@@ -16,10 +16,11 @@ config_setting(
     constraint_values = ["@platforms//os:windows"],
 )
 
-# Main application binary
-cc_binary(
-    name = "imgui_test_app",
-    srcs = ["main.cpp"],
+# Application logic library (WILL BE INSTRUMENTED FOR COVERAGE)
+cc_library(
+    name = "app_lib",
+    srcs = ["app_logic.cpp"],
+    hdrs = ["app_logic.h"],
     deps = [
         "@imgui//:imgui",
         "@imgui_test_engine//:test_engine",
@@ -29,6 +30,14 @@ cc_binary(
         "-std=c++17",
         "-DIMGUI_TEST_ENGINE_ENABLE_COROUTINE_STDTHREAD_IMPL=1",
     ],
+    visibility = ["//visibility:public"],
+)
+
+# Main application binary
+cc_binary(
+    name = "imgui_test_app",
+    srcs = ["main.cpp"],
+    deps = [":app_lib"],
     linkopts = select({
         ":linux": ["-lGL", "-ldl"],
         ":macos": ["-framework", "OpenGL"],
@@ -36,138 +45,92 @@ cc_binary(
     }),
 )
 
-# Test binary with coverage instrumentation
-cc_binary(
-    name = "imgui_test_app_coverage",
-    srcs = ["main.cpp"],
-    deps = [
-        "@imgui//:imgui",
-        "@imgui_test_engine//:test_engine",
-        "@glfw//:glfw",
-    ],
-    copts = [
-        "-std=c++17",
-        "-DIMGUI_TEST_ENGINE_ENABLE_COROUTINE_STDTHREAD_IMPL=1",
-        "-fprofile-arcs",
-        "-ftest-coverage",
-        "--coverage",
-    ],
-    linkopts = select({
-        ":linux": ["-lGL", "-ldl", "--coverage"],
-        ":macos": ["-framework", "OpenGL", "--coverage"],
-        ":windows": ["-lopengl32"],
-    }),
-)
-
-# Test targets
+# Test targets - now use the library
 cc_test(
     name = "imgui_test",
     srcs = ["main.cpp"],
-    deps = [
-        "@imgui//:imgui",
-        "@imgui_test_engine//:test_engine",
-        "@glfw//:glfw",
-    ],
+    deps = [":app_lib"],
     args = [
         "--test",
         "--headless",
         "--report",
     ],
-    copts = [
-        "-std=c++17",
-        "-DIMGUI_TEST_ENGINE_ENABLE_COROUTINE_STDTHREAD_IMPL=1",
-    ],
     linkopts = select({
         ":linux": ["-lGL", "-ldl"],
         ":macos": ["-framework", "OpenGL"],
         ":windows": ["-lopengl32"],
     }),
+    env = {
+        "DISPLAY": ":99",
+    },
     size = "medium",
 )
 
-# Widget tests only
 cc_test(
     name = "test_widgets",
     srcs = ["main.cpp"],
-    deps = [
-        "@imgui//:imgui",
-        "@imgui_test_engine//:test_engine",
-        "@glfw//:glfw",
-    ],
+    deps = [":app_lib"],
     args = [
         "--test",
         "--headless",
         "--filter",
         "Widgets",
     ],
-    copts = [
-        "-std=c++17",
-        "-DIMGUI_TEST_ENGINE_ENABLE_COROUTINE_STDTHREAD_IMPL=1",
-    ],
     linkopts = select({
         ":linux": ["-lGL", "-ldl"],
         ":macos": ["-framework", "OpenGL"],
         ":windows": ["-lopengl32"],
     }),
+    env = {
+        "DISPLAY": ":99",
+    },
     size = "small",
 )
 
-# Integration tests
 cc_test(
     name = "test_integration",
     srcs = ["main.cpp"],
-    deps = [
-        "@imgui//:imgui",
-        "@imgui_test_engine//:test_engine",
-        "@glfw//:glfw",
-    ],
+    deps = [":app_lib"],
     args = [
         "--test",
         "--headless",
         "--filter",
         "Integration",
     ],
-    copts = [
-        "-std=c++17",
-        "-DIMGUI_TEST_ENGINE_ENABLE_COROUTINE_STDTHREAD_IMPL=1",
-    ],
     linkopts = select({
         ":linux": ["-lGL", "-ldl"],
         ":macos": ["-framework", "OpenGL"],
         ":windows": ["-lopengl32"],
     }),
+    env = {
+        "DISPLAY": ":99",
+    },
     size = "medium",
 )
 
-# Performance tests
 cc_test(
     name = "test_performance",
     srcs = ["main.cpp"],
-    deps = [
-        "@imgui//:imgui",
-        "@imgui_test_engine//:test_engine",
-        "@glfw//:glfw",
-    ],
+    deps = [":app_lib"],
     args = [
         "--test",
         "--headless",
         "--filter",
         "Performance",
     ],
-    copts = [
-        "-std=c++17",
-        "-DIMGUI_TEST_ENGINE_ENABLE_COROUTINE_STDTHREAD_IMPL=1",
-    ],
     linkopts = select({
         ":linux": ["-lGL", "-ldl"],
         ":macos": ["-framework", "OpenGL"],
         ":windows": ["-lopengl32"],
     }),
+    env = {
+        "DISPLAY": ":99",
+    },
     size = "large",
     timeout = "long",
 )
 
-# Test suite combining all tests
+# Test suite
 test_suite(
     name = "all_tests",
     tests = [
@@ -178,14 +141,9 @@ test_suite(
     ],
 )
 
-# Development files
-filegroup(
-    name = "dev_files",
-    srcs = [
-        "main.cpp",
-        "BUILD.bazel",
-        "MODULE.bazel",
-        "extensions.bzl",
-        ".bazelrc",
-    ],
+# Simple test for coverage verification
+cc_test(
+    name = "simple_test",
+    srcs = ["test_simple.cpp"],
+    size = "small",
 )

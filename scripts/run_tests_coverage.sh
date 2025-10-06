@@ -27,11 +27,12 @@ if ! command -v lcov &> /dev/null; then
 fi
 
 echo -e "${GREEN}Starting virtual display (Xvfb)...${NC}"
-# Find an available display number
+# Use display :99 (matches BUILD.bazel env setting)
 DISPLAY_NUM=99
-while [ -e "/tmp/.X${DISPLAY_NUM}-lock" ]; do
-    DISPLAY_NUM=$((DISPLAY_NUM + 1))
-done
+
+# Kill any existing Xvfb on :99
+pkill -f "Xvfb :99" 2>/dev/null || true
+sleep 1
 
 # Start Xvfb (suppress XKB warnings)
 Xvfb :${DISPLAY_NUM} -screen 0 1280x720x24 2>/dev/null &

@@ -1,7 +1,7 @@
-# Enable bzlmod (default in Bazel 7+, but explicit is good)
+# Enable bzlmod
 common --enable_bzlmod
 
-# Enable incompatibility flags for cleaner builds
+# Enable incompatibility flags
 common --incompatible_disallow_empty_glob
 common --incompatible_enforce_config_setting_visibility
 
@@ -9,7 +9,7 @@ common --incompatible_enforce_config_setting_visibility
 build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 
-# Enable more warnings
+# Warnings
 build --cxxopt=-Wall
 build --cxxopt=-Wextra
 build --cxxopt=-Wpedantic
@@ -50,29 +50,29 @@ build:release --linkopt=-flto
 build:coverage --compilation_mode=dbg
 build:coverage --copt=-g
 build:coverage --copt=-O0
-build:coverage --copt=-fprofile-arcs
-build:coverage --copt=-ftest-coverage
-build:coverage --copt=--coverage
-build:coverage --linkopt=--coverage
-build:coverage --linkopt=-lgcov
 build:coverage --collect_code_coverage
-build:coverage --instrumentation_filter="^//[^:]"
 build:coverage --combined_report=lcov
 
-# Test configuration - ALWAYS generate output
+build:linux --cxxopt=-fprofile-arcs
+build:linux --cxxopt=-ftest-coverage
+build:linux --linkopt=-lgcov
+
+# Test configuration
 test --test_output=errors
 test --test_summary=detailed
 test --test_verbose_timeout_warnings
-# Keep test outputs even on success for debugging
 test --test_keep_going
-# Generate XML reports for all tests
 test --build_tests_only
 
 # Coverage test configuration
-test:coverage --instrumentation_filter="^//[^:]"
 test:coverage --combined_report=lcov
-# Continue running all tests even if some fail
 test:coverage --keep_going
+test:coverage --experimental_generate_llvm_lcov
 
-# Suppress direct dependency check warnings if needed
-# common --check_direct_dependencies=off
+# Coverage configuration
+coverage --combined_report=lcov
+coverage --instrumentation_filter="//..."
+
+# Coverage build flags to generate .gcno/.gcda files
+coverage --copt=--coverage
+coverage --linkopt=--coverage
