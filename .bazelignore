@@ -1,0 +1,23 @@
+# CMake build directory
+build
+cmake-build-*
+
+# IDE directories
+.idea
+.vscode
+*.swp
+*.swo
+
+# Coverage reports from other tools
+coverage
+htmlcov
+*.gcov
+*.gcda
+*.gcno
+
+# Documentation
+docs
+*.md
+
+# Scripts that aren't part of the build
+scripts/*.sh

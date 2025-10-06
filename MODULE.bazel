@@ -1,0 +1,13 @@
+module(
+    name = "imgui_test_project",
+    version = "1.0.0",
+)
+
+# Update to latest versions to fix warnings
+bazel_dep(name = "platforms", version = "0.0.11")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_cc", version = "0.1.1")
+
+# Module extension for git repositories
+git_repos_ext = use_extension("//:extensions.bzl", "git_repos_ext")
+use_repo(git_repos_ext, "glfw", "imgui", "imgui_test_engine")

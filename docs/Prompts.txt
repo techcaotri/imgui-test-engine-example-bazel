@@ -1,0 +1,7 @@
+repomix --no-file-summary --output-show-line-numbers --include "**/*.cpp,**/*.bazel,**/*.bzl,**/scripts/*.sh,**/scripts/*.sh" --ignore "**/src-gen/**,**/xtend-gen/**,*/model/**" --style plain -o ./imgui-test-engine-example-claude.txt .
+
+repomix --no-file-summary --output-show-line-numbers --include "**/*.cpp,**/*.bazel,**/*.bzl,**/*.sh,**/.bazelrc,**/.bazelversion,**/.bazelignore"  --style plain -o ./imgui-test-engine-example-claude.txt .
+
+I have the C++ source code which use Dear Imgui at https://github.com/ocornut/imgui and imgui_test_engine at https://github.com/ocornut/imgui_test_engine to demonstrate the automation testing of Dear Imgui based GUI applications. The project is configured with Bazel build system. The project is set up as the attached 'imgui-test-engine-example-claude.txt' file. 
+Help me fix the following build issues:
+

@@ -1,0 +1,12 @@
+*lock
+bazel-bin
+bazel-out
+bazel-genipc
+bazel-testlogs
+
+# Bazel module lock file
+MODULE.bazel.lock
+
+coverage_report
+test_results
+test_results_gui

@@ -1,0 +1,78 @@
+# Enable bzlmod (default in Bazel 7+, but explicit is good)
+common --enable_bzlmod
+
+# Enable incompatibility flags for cleaner builds
+common --incompatible_disallow_empty_glob
+common --incompatible_enforce_config_setting_visibility
+
+# Build configurations
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+
+# Enable more warnings
+build --cxxopt=-Wall
+build --cxxopt=-Wextra
+build --cxxopt=-Wpedantic
+
+# Platform-specific OpenGL linking
+build:linux --linkopt=-lGL
+build:linux --linkopt=-ldl
+build:linux --linkopt=-lpthread
+
+build:macos --linkopt=-framework
+build:macos --linkopt=OpenGL
+build:macos --linkopt=-framework
+build:macos --linkopt=Cocoa
+build:macos --linkopt=-framework
+build:macos --linkopt=IOKit
+build:macos --linkopt=-framework
+build:macos --linkopt=CoreVideo
+
+build:windows --linkopt=opengl32.lib
+build:windows --linkopt=gdi32.lib
+build:windows --linkopt=shell32.lib
+build:windows --linkopt=user32.lib
+
+# Debug build
+build:debug --compilation_mode=dbg
+build:debug --copt=-g
+build:debug --copt=-O0
+build:debug --strip=never
+
+# Release build
+build:release --compilation_mode=opt
+build:release --copt=-O3
+build:release --copt=-DNDEBUG
+build:release --copt=-flto
+build:release --linkopt=-flto
+
+# Coverage build
+build:coverage --compilation_mode=dbg
+build:coverage --copt=-g
+build:coverage --copt=-O0
+build:coverage --copt=-fprofile-arcs
+build:coverage --copt=-ftest-coverage
+build:coverage --copt=--coverage
+build:coverage --linkopt=--coverage
+build:coverage --linkopt=-lgcov
+build:coverage --collect_code_coverage
+build:coverage --instrumentation_filter="^//[^:]"
+build:coverage --combined_report=lcov
+
+# Test configuration - ALWAYS generate output
+test --test_output=errors
+test --test_summary=detailed
+test --test_verbose_timeout_warnings
+# Keep test outputs even on success for debugging
+test --test_keep_going
+# Generate XML reports for all tests
+test --build_tests_only
+
+# Coverage test configuration
+test:coverage --instrumentation_filter="^//[^:]"
+test:coverage --combined_report=lcov
+# Continue running all tests even if some fail
+test:coverage --keep_going
+
+# Suppress direct dependency check warnings if needed
+# common --check_direct_dependencies=off
